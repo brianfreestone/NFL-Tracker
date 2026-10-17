@@ -2,10 +2,18 @@
 
 Tracks the 2026 NFL regular season and postseason. Past games are pre-filled from ESPN; you enter scores for new games and mark them final.
 
-- `api/` – .NET 9 minimal API + SQLite (`nfl.db`, created on first run)
+- `api/` – .NET 9 minimal API + PostgreSQL (EF Core migrations run automatically on startup)
 - `web/` – React + Vite UI
 
 ## Run
+
+Start the local database (needs Docker; listens on port 5434, matching `api/appsettings.Development.json`):
+
+```
+docker compose up -d
+```
+
+Then:
 
 ```
 cd api && dotnet run --urls http://localhost:5028
@@ -19,7 +27,8 @@ Open http://localhost:5173.
 - First API start imports teams, the full schedule, and every final score so far (takes ~15 seconds).
 - Playoff games are created as "TBD" slots. Pick the teams from the dropdowns once matchups are set, or press **Refresh schedule** to let ESPN fill them in.
 - **Refresh schedule** never overwrites a game you've edited yourself.
-- To start over, stop the API and delete `api/nfl.db`.
+- To start over locally: `docker compose down -v`, then `docker compose up -d`.
+- After changing a model in `api/Models.cs`, run `dotnet ef migrations add <Name>` from `api/`. Migrations are applied when the app starts, locally and in production.
 
 ## Betting lines and simulated bets
 
@@ -55,4 +64,4 @@ One-time server setup (folders, edit password, systemd service, nginx site, tunn
 bash deploy/first-time-setup.sh brian@10.0.0.94
 ```
 
-The database lives in `/var/www/nfltracker/data` and a deploy never touches it.
+The database is a PostgreSQL database named `nfltracker` on the server (created by `deploy/postgres-setup.sh`; its connection string lives in `/etc/nfltracker/env`). A deploy never touches the data; new migrations run when the service starts. CI also runs the migrations against a throwaway Postgres as a smoke test.

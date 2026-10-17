@@ -3,5 +3,5 @@
 set -euo pipefail
 SERVER="${1:?Usage: first-time-setup.sh user@server}"
 ssh "$SERVER" "rm -rf ~/nfltracker-setup && mkdir -p ~/nfltracker-setup"
-scp deploy/server-setup.sh deploy/nfltracker.service deploy/nfl.brianfreestone.com.conf "$SERVER:~/nfltracker-setup/"
+scp deploy/server-setup.sh deploy/postgres-setup.sh deploy/nfltracker.service deploy/nfl.brianfreestone.com.conf "$SERVER:~/nfltracker-setup/"
 ssh -t "$SERVER" "sudo bash ~/nfltracker-setup/server-setup.sh"

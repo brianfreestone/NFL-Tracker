@@ -1,0 +1,14 @@
+# Local development database. Start with:  docker compose up -d
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nfltracker
+    ports:
+      - "5434:5432"
+    volumes:
+      - nfl-pgdata:/var/lib/postgresql/data
+
+volumes:
+  nfl-pgdata:

@@ -4,7 +4,8 @@ using NflTracker.Api;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDb>(o =>
-    o.UseSqlite(builder.Configuration.GetConnectionString("Default") ?? "Data Source=nfl.db"));
+    o.UseNpgsql(builder.Configuration.GetConnectionString("Default")
+        ?? throw new InvalidOperationException("ConnectionStrings:Default is not set (PostgreSQL connection string).")));
 builder.Services.AddHttpClient<EspnImporter>(c => c.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddHostedService<OddsRefresher>();
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -17,11 +18,11 @@ app.UseCors();
 
 const int Season = AppConfig.Season;
 
-// Create/upgrade the database and pull the full season the first time the app runs.
+// Apply any pending migrations, then pull the full season the first time the app runs.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-    SchemaUpgrade.Apply(db);
+    db.Database.Migrate();
     if (!db.Games.Any())
     {
         try { await scope.ServiceProvider.GetRequiredService<EspnImporter>().ImportAsync(Season); }

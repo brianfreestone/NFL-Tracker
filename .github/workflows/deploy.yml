@@ -9,6 +9,21 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    # Throwaway database for the smoke test below (also proves the migrations apply cleanly).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nfltracker
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -24,11 +39,11 @@ jobs:
           dotnet publish api/NflTracker.Api.csproj -c Release -o publish/api -r linux-x64 --self-contained true
 
       # Guard: the published app must actually start and answer a request.
-      # Uses a throwaway database so nothing leaks into publish/.
+      # Runs the migrations against the Postgres service above.
       - name: Smoke test published API
         env:
           ASPNETCORE_URLS: http://127.0.0.1:5199
-          ConnectionStrings__Default: Data Source=/tmp/nfl-ci.db
+          ConnectionStrings__Default: Host=localhost;Port=5432;Database=nfltracker;Username=postgres;Password=postgres
         run: |
           chmod +x publish/api/NflTracker.Api
           ./publish/api/NflTracker.Api > /tmp/api.log 2>&1 &

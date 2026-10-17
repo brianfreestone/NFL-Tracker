@@ -22,13 +22,15 @@ if [ ! -s /etc/nfltracker/env ]; then
   cat > /etc/nfltracker/env <<ENV
 ASPNETCORE_URLS=http://127.0.0.1:5105
 ASPNETCORE_ENVIRONMENT=Production
-ConnectionStrings__Default=Data Source=$APP/data/nfl.db
 Admin__Password=$PW
 ENV
   chmod 600 /etc/nfltracker/env
 else
   echo "(already set, leaving it alone)"
 fi
+
+echo "--- PostgreSQL database"
+bash "$HERE/postgres-setup.sh"
 
 echo "--- Service (enabled now, started by the first deploy)"
 cp "$HERE/nfltracker.service" /etc/systemd/system/nfltracker.service
