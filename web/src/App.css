@@ -1,0 +1,283 @@
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.top h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  margin-right: auto;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.tabs button {
+  border: 0;
+  background: transparent;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.tabs button.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.primary,
+button.secondary {
+  border-radius: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.error.banner {
+  padding: 10px 12px;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.week-picker {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.group-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  min-width: 40px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.chip.wide {
+  padding: 6px 14px;
+}
+
+.chip.done {
+  border-color: var(--win);
+}
+
+.chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.week-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 8px 0 12px;
+}
+
+.week-title small {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.badge {
+  font-weight: 600;
+}
+
+.badge.Final {
+  color: var(--text);
+}
+
+.badge.InProgress {
+  color: var(--live);
+}
+
+.team-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 72px;
+  align-items: center;
+  gap: 10px;
+}
+
+.team-row.won .team-name {
+  font-weight: 700;
+}
+
+.team-row.won .score {
+  color: var(--win);
+  font-weight: 700;
+}
+
+.logo-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.team-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+select,
+.score {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 0;
+}
+
+.score {
+  width: 72px;
+  text-align: center;
+  font-size: 1.15rem;
+}
+
+.score:disabled {
+  background: transparent;
+  border-color: transparent;
+  opacity: 1;
+  -webkit-text-fill-color: currentColor;
+}
+
+.meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.ot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.standings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.division {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.division h3 {
+  margin: 0 0 8px;
+}
+
+.division table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.division th,
+.division td {
+  padding: 6px 4px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.division th:first-child,
+.division td:first-child {
+  text-align: left;
+}
+
+.division td img {
+  vertical-align: middle;
+}
+
+@media (max-width: 480px) {
+  .team-row {
+    grid-template-columns: 32px 1fr 64px;
+  }
+}
