@@ -157,7 +157,8 @@ export const api = {
   weeks: () => request<WeekInfo[]>('/api/weeks'),
   games: (seasonType: number, week: number) =>
     request<Game[]>(`/api/games?seasonType=${seasonType}&week=${week}`),
-  gamesByIds: (ids: number[]) => request<Game[]>(`/api/games/lookup?ids=${ids.join(',')}`),
+  postseason: () => request<Game[]>('/api/postseason'),
+  gamesByIds:(ids: number[]) => request<Game[]>(`/api/games/lookup?ids=${ids.join(',')}`),
   updateGame: (id: number, update: GameUpdate) =>
     request<Game>(`/api/games/${id}`, json('PUT', update), getAdminPassword()),
   login: (password: string) => request<void>('/api/login', { method: 'POST' }, password),

@@ -28,6 +28,10 @@ Open http://localhost:5173.
 - Bets settle automatically when a game is marked final, and re-open if you edit that score. Pending bets can be cancelled for a refund. **Reset bankroll** on the Bets tab starts over.
 - Click any team (on a card, in Standings, or on the Bets tab) to see its full schedule with results, bye week, and upcoming lines.
 
+## Playoff bracket
+
+The **Playoffs** tab draws the AFC and NFC brackets meeting at the Super Bowl. Games land in the right conference once their teams are set (pick teams on the Scores tab, or let **Refresh schedule** pull them from ESPN). Undecided games show as TBD, and a champion banner appears when the Super Bowl is final. Tap a round title to jump to that round on the Scores tab.
+
 ## Editing password
 
 Anyone can view scores and standings. Changing scores, picking playoff teams, and **Refresh schedule** need a password:

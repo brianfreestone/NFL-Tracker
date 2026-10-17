@@ -3,11 +3,14 @@ import './App.css'
 import { api, getAdminPassword, setAdminPassword, UnauthorizedError } from './api'
 import type { Bankroll, Bet, Game, Team, WeekInfo } from './api'
 import { BetsPage } from './BetsPage'
+import { BracketPage } from './BracketPage'
 import { GameCard } from './GameCard'
 import { Standings } from './Standings'
 import { TeamPage } from './TeamPage'
 
-type Tab = 'scores' | 'standings' | 'bets'
+type Tab = 'scores' | 'standings' | 'bracket' | 'bets'
+
+const TAB_LABEL: Record<Tab, string> = { scores: 'Scores', standings: 'Standings', bracket: 'Playoffs', bets: 'Bets' }
 
 const POSTSEASON_SHORT: Record<number, string> = { 1: 'Wild Card', 2: 'Divisional', 3: 'Conf', 4: 'Super Bowl' }
 
@@ -135,6 +138,11 @@ export default function App() {
     }
   }
 
+  function openRound(week: number) {
+    setSelected(weekKey({ seasonType: 3, week }))
+    goTab('scores')
+  }
+
   const regular = weeks.filter((w) => w.seasonType === 2)
   const post = weeks.filter((w) => w.seasonType === 3)
   const betsByGame = useMemo(() => {
@@ -152,9 +160,9 @@ export default function App() {
           </a>
         </h1>
         <nav className="tabs">
-          {(['scores', 'standings', 'bets'] as Tab[]).map((t) => (
+          {(['scores', 'standings', 'bracket', 'bets'] as Tab[]).map((t) => (
             <button key={t} className={tab === t && teamId === null ? 'active' : ''} onClick={() => goTab(t)}>
-              {t === 'scores' ? 'Scores' : t === 'standings' ? 'Standings' : 'Bets'}
+              {TAB_LABEL[t]}
             </button>
           ))}
         </nav>
@@ -247,6 +255,8 @@ export default function App() {
       )}
 
       {!loading && teamId === null && tab === 'standings' && <Standings refreshKey={standingsKey} />}
+
+      {!loading && teamId === null && tab === 'bracket' && <BracketPage teams={teamMap} refreshKey={standingsKey} onOpenRound={openRound} />}
 
       {!loading && teamId === null && tab === 'bets' && (
         <BetsPage bets={bets} bankroll={bankroll} teams={teamMap} canEdit={canEdit} onChanged={loadBets} onUnauthorized={lock} />

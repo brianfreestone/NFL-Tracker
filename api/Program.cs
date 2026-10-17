@@ -74,6 +74,10 @@ app.MapGet("/api/games", async (AppDb db, int season = Season, int seasonType = 
     await db.Games.Where(g => g.Season == season && g.SeasonType == seasonType && g.Week == week)
         .OrderBy(g => g.KickoffUtc).ThenBy(g => g.Id).ToListAsync());
 
+app.MapGet("/api/postseason", async (AppDb db, int season = Season) =>
+    await db.Games.Where(g => g.Season == season && g.SeasonType == 3)
+        .OrderBy(g => g.Week).ThenBy(g => g.KickoffUtc).ThenBy(g => g.Id).ToListAsync());
+
 app.MapGet("/api/games/lookup", async (AppDb db, string ids) =>
 {
     var wanted = ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
