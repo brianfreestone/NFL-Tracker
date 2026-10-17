@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api } from './api'
+import { api, UnauthorizedError } from './api'
 import type { Game, GameStatus, Team } from './api'
 
 interface Props {
@@ -7,6 +7,8 @@ interface Props {
   teams: Map<number, Team>
   teamList: Team[]
   onSaved: (game: Game) => void
+  canEdit: boolean
+  onUnauthorized: () => void
 }
 
 const kickoffFormat = new Intl.DateTimeFormat(undefined, {
@@ -17,7 +19,7 @@ const kickoffFormat = new Intl.DateTimeFormat(undefined, {
   minute: '2-digit',
 })
 
-export function GameCard({ game, teams, teamList, onSaved }: Props) {
+export function GameCard({ game, teams, teamList, onSaved, canEdit, onUnauthorized }: Props) {
   const [home, setHome] = useState(String(game.homeScore))
   const [away, setAway] = useState(String(game.awayScore))
   const [overtime, setOvertime] = useState(game.overtime)
@@ -27,6 +29,7 @@ export function GameCard({ game, teams, teamList, onSaved }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   const final = game.status === 'Final'
+  const readOnly = !canEdit
   const homeTeam = homeTeamId ? teams.get(homeTeamId) : undefined
   const awayTeam = awayTeamId ? teams.get(awayTeamId) : undefined
 
@@ -44,7 +47,8 @@ export function GameCard({ game, teams, teamList, onSaved }: Props) {
       })
       onSaved(saved)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Save failed')
+      if (e instanceof UnauthorizedError) onUnauthorized()
+      setError(e instanceof UnauthorizedError ? 'Session locked. Unlock editing and try again.' : e instanceof Error ? e.message : 'Save failed')
     } finally {
       setBusy(false)
     }
@@ -67,29 +71,29 @@ export function GameCard({ game, teams, teamList, onSaved }: Props) {
         role="Away"
         team={awayTeam}
         teamList={teamList}
-        editableTeam={!final && game.awayTeamId === null}
+        editableTeam={canEdit && !final && game.awayTeamId === null}
         onPickTeam={setAwayTeamId}
         score={away}
         onScore={setAway}
-        disabled={final || !teamsSet}
+        disabled={readOnly || final || !teamsSet}
         won={awayWon}
       />
       <TeamRow
         role="Home"
         team={homeTeam}
         teamList={teamList}
-        editableTeam={!final && game.homeTeamId === null}
+        editableTeam={canEdit && !final && game.homeTeamId === null}
         onPickTeam={setHomeTeamId}
         score={home}
         onScore={setHome}
-        disabled={final || !teamsSet}
+        disabled={readOnly || final || !teamsSet}
         won={homeWon}
       />
 
       {game.label && <div className="meta">{game.label}</div>}
       {game.venue && <div className="meta">{game.venue}</div>}
 
-      {!final && (
+      {canEdit && !final && (
         <label className="ot">
           <input type="checkbox" checked={overtime} onChange={(e) => setOvertime(e.target.checked)} disabled={!teamsSet} />
           Overtime
@@ -98,7 +102,7 @@ export function GameCard({ game, teams, teamList, onSaved }: Props) {
 
       {error && <div className="error">{error}</div>}
 
-      <div className="actions">
+      {canEdit && <div className="actions">
         {final ? (
           <button className="secondary" disabled={busy} onClick={() => save('InProgress')}>
             Edit score
@@ -113,7 +117,7 @@ export function GameCard({ game, teams, teamList, onSaved }: Props) {
             </button>
           </>
         )}
-      </div>
+      </div>}
     </article>
   )
 }

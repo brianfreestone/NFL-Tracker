@@ -281,3 +281,18 @@ select,
     grid-template-columns: 32px 1fr 64px;
   }
 }
+
+.unlock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.unlock input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  width: 140px;
+}

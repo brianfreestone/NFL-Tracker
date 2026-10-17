@@ -63,13 +63,41 @@ export interface GameUpdate {
   awayTeamId?: number | null
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init)
+export class UnauthorizedError extends Error {
+  constructor() {
+    super("Wrong password")
+  }
+}
+
+const STORAGE_KEY = "nfl-admin-password"
+
+export function getAdminPassword(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setAdminPassword(password: string | null) {
+  try {
+    if (password) localStorage.setItem(STORAGE_KEY, password)
+    else localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // storage unavailable (private window); editing just won't be remembered
+  }
+}
+
+async function request<T>(url: string, init?: RequestInit, password?: string | null): Promise<T> {
+  const headers = new Headers(init?.headers)
+  if (password) headers.set("X-Admin-Password", password)
+  const res = await fetch(url, { ...init, headers })
+  if (res.status === 401) throw new UnauthorizedError()
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(text.replace(/^"|"$/g, '') || `Request failed (${res.status})`)
+    throw new Error(text.replace(/^"|"$/g, "") || `Request failed (${res.status})`)
   }
-  return res.json()
+  return res.status === 204 ? (undefined as T) : res.json()
 }
 
 export const api = {
@@ -78,12 +106,13 @@ export const api = {
   games: (seasonType: number, week: number) =>
     request<Game[]>(`/api/games?seasonType=${seasonType}&week=${week}`),
   updateGame: (id: number, update: GameUpdate) =>
-    request<Game>(`/api/games/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(update),
-    }),
+    request<Game>(
+      `/api/games/${id}`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(update) },
+      getAdminPassword(),
+    ),
+  login: (password: string) => request<void>("/api/login", { method: "POST" }, password),
   standings: () => request<DivisionStandings[]>('/api/standings'),
   importSchedule: () =>
-    request<{ teams: number; added: number; updated: number }>('/api/import', { method: 'POST' }),
+    request<{ teams: number; added: number; updated: number }>("/api/import", { method: "POST" }, getAdminPassword()),
 }

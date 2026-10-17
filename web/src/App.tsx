@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
-import { api } from './api'
+import { api, getAdminPassword, setAdminPassword, UnauthorizedError } from './api'
 import type { Game, Team, WeekInfo } from './api'
 import { GameCard } from './GameCard'
 import { Standings } from './Standings'
@@ -20,6 +20,36 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const [standingsKey, setStandingsKey] = useState(0)
+  const [canEdit, setCanEdit] = useState(false)
+  const [unlocking, setUnlocking] = useState(false)
+  const [password, setPassword] = useState("")
+  const [loginError, setLoginError] = useState<string | null>(null)
+
+  // Re-check a remembered password so a changed password locks the page again.
+  useEffect(() => {
+    const saved = getAdminPassword()
+    if (!saved) return
+    api.login(saved).then(() => setCanEdit(true)).catch(() => setAdminPassword(null))
+  }, [])
+
+  async function unlock(e: React.FormEvent) {
+    e.preventDefault()
+    setLoginError(null)
+    try {
+      await api.login(password)
+      setAdminPassword(password)
+      setCanEdit(true)
+      setUnlocking(false)
+      setPassword("")
+    } catch (err) {
+      setLoginError(err instanceof UnauthorizedError ? "Wrong password" : "Could not reach the server")
+    }
+  }
+
+  function lock() {
+    setAdminPassword(null)
+    setCanEdit(false)
+  }
 
   const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams])
   const current = weeks.find((w) => weekKey(w) === selected)
@@ -83,9 +113,31 @@ export default function App() {
             Standings
           </button>
         </nav>
-        <button className="secondary" onClick={refreshFromEspn} disabled={importing} title="Re-read the schedule from ESPN. Games you've edited are not overwritten.">
-          {importing ? 'Refreshing…' : 'Refresh schedule'}
-        </button>
+        {canEdit ? (
+          <>
+            <button className="secondary" onClick={refreshFromEspn} disabled={importing} title="Re-read the schedule from ESPN. Games you've edited are not overwritten.">
+              {importing ? "Refreshing…" : "Refresh schedule"}
+            </button>
+            <button className="secondary" onClick={lock}>
+              Lock
+            </button>
+          </>
+        ) : unlocking ? (
+          <form className="unlock" onSubmit={unlock}>
+            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus aria-label="Edit password" />
+            <button className="primary" type="submit">
+              Unlock
+            </button>
+            <button className="secondary" type="button" onClick={() => { setUnlocking(false); setLoginError(null) }}>
+              Cancel
+            </button>
+            {loginError && <span className="error">{loginError}</span>}
+          </form>
+        ) : (
+          <button className="secondary" onClick={() => setUnlocking(true)}>
+            Unlock editing
+          </button>
+        )}
       </header>
 
       {error && <div className="error banner">{error}</div>}
@@ -123,7 +175,7 @@ export default function App() {
 
           <div className="grid">
             {games.map((g) => (
-              <GameCard key={`${g.id}-${g.status}-${g.homeScore}-${g.awayScore}`} game={g} teams={teamMap} teamList={teams} onSaved={onSaved} />
+              <GameCard key={`${g.id}-${g.status}-${g.homeScore}-${g.awayScore}-${canEdit}`} game={g} teams={teamMap} teamList={teams} onSaved={onSaved} onUnauthorized={lock} canEdit={canEdit} />
             ))}
           </div>
         </>

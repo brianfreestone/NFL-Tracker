@@ -72,7 +72,10 @@ app.MapPut("/api/games/{id:int}", async (AppDb db, int id, GameUpdate u) =>
     g.ManuallyEdited = true;
     await db.SaveChangesAsync();
     return Results.Ok(g);
-});
+}).RequireAdmin();
+
+// The UI calls this to check a password before unlocking editing.
+app.MapPost("/api/login", () => Results.NoContent()).RequireAdmin();
 
 app.MapGet("/api/standings", async (AppDb db, int season = Season) =>
 {
@@ -104,7 +107,7 @@ app.MapGet("/api/standings", async (AppDb db, int season = Season) =>
         });
 });
 
-app.MapPost("/api/import", async (EspnImporter importer, int season = Season) => await importer.ImportAsync(season));
+app.MapPost("/api/import", async (EspnImporter importer, int season = Season) => await importer.ImportAsync(season)).RequireAdmin();
 
 app.Run();
 
