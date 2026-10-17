@@ -32,6 +32,10 @@ Open http://localhost:5173.
 
 The **Playoffs** tab draws the AFC and NFC brackets meeting at the Super Bowl. Games land in the right conference once their teams are set (pick teams on the Scores tab, or let **Refresh schedule** pull them from ESPN). Undecided games show as TBD, and a champion banner appears when the Super Bowl is final. Tap a round title to jump to that round on the Scores tab.
 
+## Records and hover cards
+
+Every team name shows its regular-season record on the game cards and in the bracket. Hover a team (or tab to it) for a card with division rank, home/away/division records, points for and against, streak, last result, and next game with its line. Click through for the full schedule.
+
 ## Editing password
 
 Anyone can view scores and standings. Changing scores, picking playoff teams, and **Refresh schedule** need a password:

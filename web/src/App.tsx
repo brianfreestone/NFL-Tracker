@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { api, getAdminPassword, setAdminPassword, UnauthorizedError } from './api'
-import type { Bankroll, Bet, Game, Team, WeekInfo } from './api'
+import type { Bankroll, Bet, Game, Team, TeamSummary, WeekInfo } from './api'
 import { BetsPage } from './BetsPage'
 import { BracketPage } from './BracketPage'
 import { GameCard } from './GameCard'
 import { Standings } from './Standings'
+import { TeamInfoContext } from './teamInfo'
 import { TeamPage } from './TeamPage'
 
 type Tab = 'scores' | 'standings' | 'bracket' | 'bets'
@@ -32,6 +33,7 @@ export default function App() {
   const [games, setGames] = useState<Game[]>([])
   const [bets, setBets] = useState<Bet[]>([])
   const [bankroll, setBankroll] = useState<Bankroll | null>(null)
+  const [summaries, setSummaries] = useState<Map<number, TeamSummary>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
@@ -100,9 +102,18 @@ export default function App() {
     setBankroll(br)
   }, [])
 
+  // Records and last/next games for every team (cards, bracket, hover cards). Quietly keeps old data on failure.
+  const loadSummaries = useCallback(async () => {
+    try {
+      setSummaries(new Map((await api.teamSummaries()).map((s) => [s.teamId, s])))
+    } catch {
+      // records are a nice-to-have; the rest of the page still works
+    }
+  }, [])
+
   // First load: teams, weeks, bets, then jump to the first week that still has unfinished games.
   useEffect(() => {
-    Promise.all([api.teams(), loadWeeks(), loadBets()])
+    Promise.all([api.teams(), loadWeeks(), loadBets(), loadSummaries()])
       .then(([t, w]) => {
         setTeams(t)
         const next = w.find((x) => x.final < x.total) ?? w[w.length - 1]
@@ -110,7 +121,7 @@ export default function App() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Could not reach the API'))
       .finally(() => setLoading(false))
-  }, [loadWeeks, loadBets])
+  }, [loadWeeks, loadBets, loadSummaries])
 
   useEffect(() => {
     if (!current) return
@@ -120,7 +131,7 @@ export default function App() {
   async function onSaved(saved: Game) {
     setGames((gs) => gs.map((g) => (g.id === saved.id ? saved : g)))
     setStandingsKey((k) => k + 1)
-    await Promise.all([loadWeeks(), loadBets()]) // finishing a game settles its bets
+    await Promise.all([loadWeeks(), loadBets(), loadSummaries()]) // finishing a game settles bets and changes records
   }
 
   async function refreshFromEspn() {
@@ -128,7 +139,7 @@ export default function App() {
     setError(null)
     try {
       await api.importSchedule()
-      await Promise.all([loadWeeks(), loadBets()])
+      await Promise.all([loadWeeks(), loadBets(), loadSummaries()])
       if (current) setGames(await api.games(current.seasonType, current.week))
       setStandingsKey((k) => k + 1)
     } catch (e) {
@@ -152,6 +163,7 @@ export default function App() {
   }, [bets])
 
   return (
+    <TeamInfoContext.Provider value={summaries}>
     <div className="app">
       <header className="top">
         <h1>
@@ -262,6 +274,7 @@ export default function App() {
         <BetsPage bets={bets} bankroll={bankroll} teams={teamMap} canEdit={canEdit} onChanged={loadBets} onUnauthorized={lock} />
       )}
     </div>
+    </TeamInfoContext.Provider>
   )
 }
 

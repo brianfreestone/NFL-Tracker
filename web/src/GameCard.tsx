@@ -3,6 +3,7 @@ import { api, UnauthorizedError } from './api'
 import type { Bet, Game, GameStatus, Team } from './api'
 import { kickoffFormat, asDate } from './format'
 import { OddsBoard } from './OddsBoard'
+import { Record } from './teamInfo'
 import { TeamLink } from './TeamLink'
 
 interface Props {
@@ -167,7 +168,10 @@ function TeamRow({ role, team, teamList, editableTeam, onPickTeam, score, onScor
         </select>
       ) : (
         <span className="team-name">
-          <TeamLink team={team} />
+          <span className="tn-text">
+            <TeamLink team={team} />
+          </span>
+          <Record teamId={team.id} />
         </span>
       )}
       <input

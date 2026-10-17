@@ -3,6 +3,7 @@ import { api } from './api'
 import type { Game, Team } from './api'
 import { asDate, hasLines, odds, shortDate, spread } from './format'
 import { TeamLink } from './TeamLink'
+import { Record } from './teamInfo'
 
 type Conf = 'AFC' | 'NFC'
 
@@ -115,27 +116,31 @@ function Matchup({ game, teams }: { game: Game | null; teams: Map<number, Team> 
   const homeWon = final && game.homeScore > game.awayScore
   const started = game.status !== 'Scheduled'
 
-  const row = (team: Team | undefined, score: number, won: boolean, lost: boolean) => (
-    <div className={`m-row ${won ? 'won' : ''} ${lost ? 'lost' : ''}`}>
-      {team ? <img src={team.logoUrl} alt="" width={22} height={22} /> : <span className="m-dot" />}
-      <span className="m-name">{team ? <TeamLink team={team}>{team.abbreviation}</TeamLink> : 'TBD'}</span>
-      {started && <span className="m-score">{score}</span>}
-    </div>
-  )
-
   return (
     <div className={`matchup ${final ? 'is-final' : ''}`}>
       <div className="m-meta">
         {final ? (game.overtime ? 'Final/OT' : 'Final') : game.status === 'InProgress' ? 'Live' : shortDate.format(asDate(game.kickoffUtc))}
       </div>
-      {row(away, game.awayScore, awayWon, homeWon)}
-      {row(home, game.homeScore, homeWon, awayWon)}
+      <MatchRow team={away} score={game.awayScore} won={awayWon} lost={homeWon} started={started} />
+      <MatchRow team={home} score={game.homeScore} won={homeWon} lost={awayWon} started={started} />
       {!final && hasLines(game) && home && away && (
         <div className="m-lines">
           {game.homeSpread !== null && `${home.abbreviation} ${spread(game.homeSpread)} (${odds(game.homeSpreadOdds)})`}
           {game.total !== null && ` · O/U ${game.total}`}
         </div>
       )}
+    </div>
+  )
+}
+
+function MatchRow({ team, score, won, lost, started }: { team: Team | undefined; score: number; won: boolean; lost: boolean; started: boolean }) {
+  return (
+    <div className={`m-row ${won ? 'won' : ''} ${lost ? 'lost' : ''}`}>
+      {team ? <img src={team.logoUrl} alt="" width={22} height={22} /> : <span className="m-dot" />}
+      <span className="m-name">
+        {team ? <TeamLink team={team}>{team.abbreviation}</TeamLink> : 'TBD'} <Record teamId={team?.id} />
+      </span>
+      {started && <span className="m-score">{score}</span>}
     </div>
   )
 }

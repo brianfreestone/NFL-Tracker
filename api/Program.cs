@@ -31,6 +31,8 @@ using (var scope = app.Services.CreateScope())
 
 app.MapGet("/api/teams", (AppDb db) => db.Teams.OrderBy(t => t.DisplayName).ToListAsync());
 
+app.MapGet("/api/teams/summary", (AppDb db, int season = Season) => TeamSummaries.BuildAsync(db, season));
+
 app.MapGet("/api/teams/{id:int}/schedule", async (AppDb db, int id, int season = Season) =>
 {
     var team = await db.Teams.FindAsync(id);

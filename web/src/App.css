@@ -192,6 +192,14 @@ button.secondary {
 }
 
 .team-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tn-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -821,4 +829,79 @@ button.tiny {
 
 .champion strong {
   font-size: 1.3rem;
+}
+
+/* ── Records and team hover card ───────────────────────── */
+.rec {
+  flex: none;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.team-row.won .rec {
+  font-weight: 400;
+}
+
+.team-card {
+  position: fixed;
+  z-index: 50;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  font-size: 0.85rem;
+}
+
+.tc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tc-head > div {
+  min-width: 0;
+}
+
+.tc-record {
+  margin-left: auto;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-line {
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-label {
+  display: inline-block;
+  width: 36px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tc-line .win {
+  color: var(--win);
+}
+
+.tc-line .loss {
+  color: var(--danger);
+}
+
+.tc-line .live {
+  color: var(--live);
+}
+
+.tc-hint {
+  margin-top: 2px;
 }

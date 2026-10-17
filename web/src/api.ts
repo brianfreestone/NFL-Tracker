@@ -108,6 +108,39 @@ export interface TeamSchedule {
   byeWeeks: number[]
 }
 
+export interface GameRef {
+  seasonType: number
+  week: number
+  opponentId: number
+  opponentAbbr: string
+  home: boolean
+  status: GameStatus
+  ownScore: number
+  oppScore: number
+  overtime: boolean
+  kickoffUtc: string
+  spread: number | null
+  spreadOdds: number | null
+  total: number | null
+}
+
+export interface TeamSummary {
+  teamId: number
+  wins: number
+  losses: number
+  ties: number
+  pointsFor: number
+  pointsAgainst: number
+  homeRecord: string
+  awayRecord: string
+  divisionRecord: string
+  divisionRank: number
+  gamesPlayed: number
+  streak: string
+  last: GameRef | null
+  next: GameRef | null
+}
+
 export class UnauthorizedError extends Error {
   constructor() {
     super('Wrong password')
@@ -153,7 +186,8 @@ const json = (method: string, body: unknown): RequestInit => ({
 
 export const api = {
   teams: () => request<Team[]>('/api/teams'),
-  teamSchedule: (id: number) => request<TeamSchedule>(`/api/teams/${id}/schedule`),
+  teamSummaries: () => request<TeamSummary[]>('/api/teams/summary'),
+  teamSchedule:(id: number) => request<TeamSchedule>(`/api/teams/${id}/schedule`),
   weeks: () => request<WeekInfo[]>('/api/weeks'),
   games: (seasonType: number, week: number) =>
     request<Game[]>(`/api/games?seasonType=${seasonType}&week=${week}`),
