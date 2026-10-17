@@ -32,10 +32,12 @@ Click **Unlock editing** in the header. The browser remembers the password until
 
 ## Deploy (nfl.brianfreestone.com)
 
-From the repo root, in Git Bash:
+Every push to `main` runs `.github/workflows/deploy.yml`: it builds the API (self-contained linux-x64) and client, smoke-tests the API, copies both to the server over the Cloudflare tunnel, and restarts the `nfltracker` service. It needs the repo secrets `SSH_PRIVATE_KEY`, `SSH_HOST`, and `SSH_USER` (same values as the Lawncare repo).
+
+One-time server setup (folders, edit password, systemd service, nginx site, tunnel route), from the repo root in Git Bash:
 
 ```
-bash deploy/deploy.sh brian@10.0.0.94
+bash deploy/first-time-setup.sh brian@10.0.0.94
 ```
 
-This builds both projects, uploads them, and runs `deploy/server-install.sh` on the server. The first run also asks you to choose the edit password and sets up the service, nginx site, and Cloudflare tunnel route. Later runs only swap in the new build. The database lives in `/var/www/nfltracker/data` and is never touched by a deploy.
+The database lives in `/var/www/nfltracker/data` and a deploy never touches it.
