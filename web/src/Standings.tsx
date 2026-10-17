@@ -31,7 +31,10 @@ export function Standings({ refreshKey }: { refreshKey: number }) {
               {d.teams.map((t) => (
                 <tr key={t.teamId}>
                   <td>
-                    <img src={t.logoUrl} alt="" width={22} height={22} /> {t.name}
+                    <img src={t.logoUrl} alt="" width={22} height={22} />{' '}
+                    <a className="team-link" href={`#/team/${t.teamId}`}>
+                      {t.name}
+                    </a>
                   </td>
                   <td>{t.wins}</td>
                   <td>{t.losses}</td>

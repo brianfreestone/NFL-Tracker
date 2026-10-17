@@ -21,6 +21,13 @@ Open http://localhost:5173.
 - **Refresh schedule** never overwrites a game you've edited yourself.
 - To start over, stop the API and delete `api/nfl.db`.
 
+## Betting lines and simulated bets
+
+- Spread, total, and moneyline come from DraftKings via ESPN. Books post lines a week or two ahead, so far-off weeks show none yet. The API refreshes lines every 3 hours (**Refresh schedule** does it on demand) and keeps the last lines once a game starts.
+- Bets use play money ($1,000 starting bankroll). While unlocked, tap a line on any scheduled game, pick a stake, and place the bet. The line and odds are locked in when you place it.
+- Bets settle automatically when a game is marked final, and re-open if you edit that score. Pending bets can be cancelled for a refund. **Reset bankroll** on the Bets tab starts over.
+- Click any team (on a card, in Standings, or on the Bets tab) to see its full schedule with results, bye week, and upcoming lines.
+
 ## Editing password
 
 Anyone can view scores and standings. Changing scores, picking playoff teams, and **Refresh schedule** need a password:

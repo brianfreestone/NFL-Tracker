@@ -1,29 +1,63 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { api, getAdminPassword, setAdminPassword, UnauthorizedError } from './api'
-import type { Game, Team, WeekInfo } from './api'
+import type { Bankroll, Bet, Game, Team, WeekInfo } from './api'
+import { BetsPage } from './BetsPage'
 import { GameCard } from './GameCard'
 import { Standings } from './Standings'
+import { TeamPage } from './TeamPage'
+
+type Tab = 'scores' | 'standings' | 'bets'
 
 const POSTSEASON_SHORT: Record<number, string> = { 1: 'Wild Card', 2: 'Divisional', 3: 'Conf', 4: 'Super Bowl' }
 
 const weekKey = (w: { seasonType: number; week: number }) => `${w.seasonType}-${w.week}`
 const weekText = (w: WeekInfo) => (w.seasonType === 3 ? POSTSEASON_SHORT[w.week] ?? `Playoffs ${w.week}` : String(w.week))
 
+/** "#/team/12" -> 12, anything else -> null */
+function teamIdFromHash(hash: string): number | null {
+  const m = hash.match(/^#\/team\/(\d+)$/)
+  return m ? Number(m[1]) : null
+}
+
 export default function App() {
-  const [tab, setTab] = useState<'scores' | 'standings'>('scores')
+  const [tab, setTab] = useState<Tab>('scores')
+  const [hash, setHash] = useState(window.location.hash)
   const [teams, setTeams] = useState<Team[]>([])
   const [weeks, setWeeks] = useState<WeekInfo[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [games, setGames] = useState<Game[]>([])
+  const [bets, setBets] = useState<Bet[]>([])
+  const [bankroll, setBankroll] = useState<Bankroll | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const [standingsKey, setStandingsKey] = useState(0)
   const [canEdit, setCanEdit] = useState(false)
   const [unlocking, setUnlocking] = useState(false)
-  const [password, setPassword] = useState("")
+  const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
+
+  const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams])
+  const current = weeks.find((w) => weekKey(w) === selected)
+  const teamId = teamIdFromHash(hash)
+
+  useEffect(() => {
+    const onHash = () => {
+      setHash(window.location.hash)
+      window.scrollTo(0, 0)
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  function goTab(next: Tab) {
+    setTab(next)
+    if (window.location.hash) {
+      window.history.pushState(null, '', window.location.pathname + window.location.search)
+      setHash('')
+    }
+  }
 
   // Re-check a remembered password so a changed password locks the page again.
   useEffect(() => {
@@ -40,9 +74,9 @@ export default function App() {
       setAdminPassword(password)
       setCanEdit(true)
       setUnlocking(false)
-      setPassword("")
+      setPassword('')
     } catch (err) {
-      setLoginError(err instanceof UnauthorizedError ? "Wrong password" : "Could not reach the server")
+      setLoginError(err instanceof UnauthorizedError ? 'Wrong password' : 'Could not reach the server')
     }
   }
 
@@ -51,18 +85,21 @@ export default function App() {
     setCanEdit(false)
   }
 
-  const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams])
-  const current = weeks.find((w) => weekKey(w) === selected)
-
   const loadWeeks = useCallback(async () => {
     const w = await api.weeks()
     setWeeks(w)
     return w
   }, [])
 
-  // First load: teams, weeks, then jump to the first week that still has unfinished games.
+  const loadBets = useCallback(async () => {
+    const [b, br] = await Promise.all([api.bets(), api.bankroll()])
+    setBets(b)
+    setBankroll(br)
+  }, [])
+
+  // First load: teams, weeks, bets, then jump to the first week that still has unfinished games.
   useEffect(() => {
-    Promise.all([api.teams(), loadWeeks()])
+    Promise.all([api.teams(), loadWeeks(), loadBets()])
       .then(([t, w]) => {
         setTeams(t)
         const next = w.find((x) => x.final < x.total) ?? w[w.length - 1]
@@ -70,7 +107,7 @@ export default function App() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Could not reach the API'))
       .finally(() => setLoading(false))
-  }, [loadWeeks])
+  }, [loadWeeks, loadBets])
 
   useEffect(() => {
     if (!current) return
@@ -80,7 +117,7 @@ export default function App() {
   async function onSaved(saved: Game) {
     setGames((gs) => gs.map((g) => (g.id === saved.id ? saved : g)))
     setStandingsKey((k) => k + 1)
-    await loadWeeks()
+    await Promise.all([loadWeeks(), loadBets()]) // finishing a game settles its bets
   }
 
   async function refreshFromEspn() {
@@ -88,7 +125,7 @@ export default function App() {
     setError(null)
     try {
       await api.importSchedule()
-      await loadWeeks()
+      await Promise.all([loadWeeks(), loadBets()])
       if (current) setGames(await api.games(current.seasonType, current.week))
       setStandingsKey((k) => k + 1)
     } catch (e) {
@@ -100,23 +137,31 @@ export default function App() {
 
   const regular = weeks.filter((w) => w.seasonType === 2)
   const post = weeks.filter((w) => w.seasonType === 3)
+  const betsByGame = useMemo(() => {
+    const m = new Map<number, Bet[]>()
+    for (const b of bets) m.set(b.gameId, [...(m.get(b.gameId) ?? []), b])
+    return m
+  }, [bets])
 
   return (
     <div className="app">
       <header className="top">
-        <h1>NFL 2026 Tracker</h1>
+        <h1>
+          <a href="#/" onClick={() => goTab('scores')}>
+            NFL 2026 Tracker
+          </a>
+        </h1>
         <nav className="tabs">
-          <button className={tab === 'scores' ? 'active' : ''} onClick={() => setTab('scores')}>
-            Scores
-          </button>
-          <button className={tab === 'standings' ? 'active' : ''} onClick={() => setTab('standings')}>
-            Standings
-          </button>
+          {(['scores', 'standings', 'bets'] as Tab[]).map((t) => (
+            <button key={t} className={tab === t && teamId === null ? 'active' : ''} onClick={() => goTab(t)}>
+              {t === 'scores' ? 'Scores' : t === 'standings' ? 'Standings' : 'Bets'}
+            </button>
+          ))}
         </nav>
         {canEdit ? (
           <>
-            <button className="secondary" onClick={refreshFromEspn} disabled={importing} title="Re-read the schedule from ESPN. Games you've edited are not overwritten.">
-              {importing ? "Refreshing…" : "Refresh schedule"}
+            <button className="secondary" onClick={refreshFromEspn} disabled={importing} title="Re-read the schedule and lines from ESPN. Games you've edited are not overwritten.">
+              {importing ? 'Refreshing…' : 'Refresh schedule'}
             </button>
             <button className="secondary" onClick={lock}>
               Lock
@@ -128,7 +173,14 @@ export default function App() {
             <button className="primary" type="submit">
               Unlock
             </button>
-            <button className="secondary" type="button" onClick={() => { setUnlocking(false); setLoginError(null) }}>
+            <button
+              className="secondary"
+              type="button"
+              onClick={() => {
+                setUnlocking(false)
+                setLoginError(null)
+              }}
+            >
               Cancel
             </button>
             {loginError && <span className="error">{loginError}</span>}
@@ -143,7 +195,9 @@ export default function App() {
       {error && <div className="error banner">{error}</div>}
       {loading && <p className="muted">Loading…</p>}
 
-      {tab === 'scores' && !loading && (
+      {!loading && teamId !== null && <TeamPage key={teamId} teamId={teamId} teams={teamMap} />}
+
+      {!loading && teamId === null && tab === 'scores' && (
         <>
           <div className="week-picker">
             <span className="group-label">Regular season</span>
@@ -175,13 +229,28 @@ export default function App() {
 
           <div className="grid">
             {games.map((g) => (
-              <GameCard key={`${g.id}-${g.status}-${g.homeScore}-${g.awayScore}-${canEdit}`} game={g} teams={teamMap} teamList={teams} onSaved={onSaved} onUnauthorized={lock} canEdit={canEdit} />
+              <GameCard
+                key={`${g.id}-${g.status}-${g.homeScore}-${g.awayScore}-${canEdit}`}
+                game={g}
+                teams={teamMap}
+                teamList={teams}
+                bets={betsByGame.get(g.id) ?? []}
+                balanceCents={bankroll?.balanceCents ?? 0}
+                onSaved={onSaved}
+                onBetPlaced={loadBets}
+                onUnauthorized={lock}
+                canEdit={canEdit}
+              />
             ))}
           </div>
         </>
       )}
 
-      {tab === 'standings' && <Standings refreshKey={standingsKey} />}
+      {!loading && teamId === null && tab === 'standings' && <Standings refreshKey={standingsKey} />}
+
+      {!loading && teamId === null && tab === 'bets' && (
+        <BetsPage bets={bets} bankroll={bankroll} teams={teamMap} canEdit={canEdit} onChanged={loadBets} onUnauthorized={lock} />
+      )}
     </div>
   )
 }

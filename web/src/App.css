@@ -296,3 +296,401 @@ select,
   padding: 8px;
   width: 140px;
 }
+
+/* ── Links ─────────────────────────────────────────────── */
+.team-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.team-link:hover {
+  text-decoration: underline;
+  color: var(--accent);
+}
+
+.top h1 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* ── Odds board ────────────────────────────────────────── */
+.odds {
+  display: grid;
+  gap: 8px;
+}
+
+.odds-grid {
+  display: grid;
+  grid-template-columns: 44px repeat(3, 1fr);
+  gap: 4px;
+  align-items: stretch;
+}
+
+.odds-head {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  text-align: center;
+}
+
+.odds-team {
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.odds-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  font-variant-numeric: tabular-nums;
+}
+
+.odds-cell.empty {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.odds-main {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.odds-sub {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.odds-cell.pickable {
+  cursor: pointer;
+}
+
+.odds-cell.pickable:hover {
+  border-color: var(--accent);
+}
+
+.odds-cell.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.odds-cell.selected .odds-sub {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.slip {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+}
+
+.slip-title {
+  font-weight: 600;
+}
+
+.slip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.stake {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stake input {
+  width: 84px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.chip-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
+.my-bets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.bet-chip {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--bg);
+  border-left: 3px solid var(--live);
+}
+
+.bet-chip.Won {
+  border-left-color: var(--win);
+}
+
+.bet-chip.Lost {
+  border-left-color: var(--danger);
+}
+
+.bet-chip.Push {
+  border-left-color: var(--muted);
+}
+
+/* ── Bets page ─────────────────────────────────────────── */
+.play-note {
+  margin-top: 0;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.tile {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.tile strong {
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile.big strong {
+  font-size: 1.6rem;
+}
+
+.tile-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.tile.good strong {
+  color: var(--win);
+}
+
+.tile.bad strong {
+  color: var(--danger);
+}
+
+.small {
+  font-size: 0.8rem;
+}
+
+.actions.left {
+  justify-content: flex-start;
+  margin-bottom: 12px;
+}
+
+.bet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.bet-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--live);
+  border-radius: 10px;
+}
+
+.bet-row.Won {
+  border-left-color: var(--win);
+}
+
+.bet-row.Lost {
+  border-left-color: var(--danger);
+}
+
+.bet-row.Push {
+  border-left-color: var(--muted);
+}
+
+.bet-money {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pill {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.pill.Won {
+  color: var(--win);
+  border-color: var(--win);
+}
+
+.pill.Lost {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.pill.Pending {
+  color: var(--live);
+  border-color: var(--live);
+}
+
+button.tiny {
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.8rem;
+}
+
+/* ── Team page ─────────────────────────────────────────── */
+.team-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--accent);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.team-hero h2 {
+  margin: 0;
+}
+
+.team-record {
+  margin-left: auto;
+  display: grid;
+  text-align: right;
+}
+
+.team-record strong {
+  font-size: 1.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.schedule {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.sched-row {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.sched-row.bye {
+  background: transparent;
+  border-style: dashed;
+}
+
+.sched-week {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.sched-opp img,
+.sched-result img {
+  vertical-align: middle;
+}
+
+.sched-result {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sched-result .win {
+  color: var(--win);
+}
+
+.sched-result .loss {
+  color: var(--danger);
+}
+
+.sched-result .live {
+  color: var(--live);
+}
+
+@media (max-width: 560px) {
+  .bet-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .sched-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .sched-week {
+    grid-column: 1 / -1;
+  }
+
+  .sched-result {
+    text-align: left;
+    grid-column: 1 / -1;
+  }
+
+  .team-record {
+    margin-left: 0;
+    text-align: left;
+  }
+}

@@ -1,25 +1,23 @@
 import { useState } from 'react'
 import { api, UnauthorizedError } from './api'
-import type { Game, GameStatus, Team } from './api'
+import type { Bet, Game, GameStatus, Team } from './api'
+import { kickoffFormat, asDate } from './format'
+import { OddsBoard } from './OddsBoard'
+import { TeamLink } from './TeamLink'
 
 interface Props {
   game: Game
   teams: Map<number, Team>
   teamList: Team[]
+  bets: Bet[]
+  balanceCents: number
   onSaved: (game: Game) => void
+  onBetPlaced: () => void
   canEdit: boolean
   onUnauthorized: () => void
 }
 
-const kickoffFormat = new Intl.DateTimeFormat(undefined, {
-  weekday: 'short',
-  month: 'short',
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
-})
-
-export function GameCard({ game, teams, teamList, onSaved, canEdit, onUnauthorized }: Props) {
+export function GameCard({ game, teams, teamList, bets, balanceCents, onSaved, onBetPlaced, canEdit, onUnauthorized }: Props) {
   const [home, setHome] = useState(String(game.homeScore))
   const [away, setAway] = useState(String(game.awayScore))
   const [overtime, setOvertime] = useState(game.overtime)
@@ -61,7 +59,7 @@ export function GameCard({ game, teams, teamList, onSaved, canEdit, onUnauthoriz
   return (
     <article className={`card ${final ? 'is-final' : ''}`}>
       <header className="card-head">
-        <span>{kickoffFormat.format(new Date(game.kickoffUtc + 'Z'))}</span>
+        <span>{kickoffFormat.format(asDate(game.kickoffUtc))}</span>
         <span className={`badge ${game.status}`}>
           {final ? (game.overtime ? 'Final/OT' : 'Final') : game.status === 'InProgress' ? 'In progress' : 'Scheduled'}
         </span>
@@ -90,6 +88,18 @@ export function GameCard({ game, teams, teamList, onSaved, canEdit, onUnauthoriz
         won={homeWon}
       />
 
+      <OddsBoard
+        game={game}
+        home={homeTeam}
+        away={awayTeam}
+        bets={bets}
+        teams={teams}
+        canBet={canEdit}
+        balanceCents={balanceCents}
+        onPlaced={onBetPlaced}
+        onUnauthorized={onUnauthorized}
+      />
+
       {game.label && <div className="meta">{game.label}</div>}
       {game.venue && <div className="meta">{game.venue}</div>}
 
@@ -102,22 +112,24 @@ export function GameCard({ game, teams, teamList, onSaved, canEdit, onUnauthoriz
 
       {error && <div className="error">{error}</div>}
 
-      {canEdit && <div className="actions">
-        {final ? (
-          <button className="secondary" disabled={busy} onClick={() => save('InProgress')}>
-            Edit score
-          </button>
-        ) : (
-          <>
-            <button className="secondary" disabled={busy || !teamsSet} onClick={() => save('InProgress')}>
-              Save live score
+      {canEdit && (
+        <div className="actions">
+          {final ? (
+            <button className="secondary" disabled={busy} onClick={() => save('InProgress')}>
+              Edit score
             </button>
-            <button className="primary" disabled={busy || !teamsSet} onClick={() => save('Final')}>
-              Mark final
-            </button>
-          </>
-        )}
-      </div>}
+          ) : (
+            <>
+              <button className="secondary" disabled={busy || !teamsSet} onClick={() => save('InProgress')}>
+                Save live score
+              </button>
+              <button className="primary" disabled={busy || !teamsSet} onClick={() => save('Final')}>
+                Mark final
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </article>
   )
 }
@@ -137,7 +149,13 @@ interface RowProps {
 function TeamRow({ role, team, teamList, editableTeam, onPickTeam, score, onScore, disabled, won }: RowProps) {
   return (
     <div className={`team-row ${won ? 'won' : ''}`}>
-      {team ? <img src={team.logoUrl} alt="" width={36} height={36} /> : <span className="logo-placeholder" />}
+      {team ? (
+        <TeamLink team={team}>
+          <img src={team.logoUrl} alt="" width={36} height={36} />
+        </TeamLink>
+      ) : (
+        <span className="logo-placeholder" />
+      )}
       {editableTeam || !team ? (
         <select value={team?.id ?? ''} onChange={(e) => onPickTeam(e.target.value ? Number(e.target.value) : null)} aria-label={`${role} team`}>
           <option value="">{role} team TBD</option>
@@ -148,7 +166,9 @@ function TeamRow({ role, team, teamList, editableTeam, onPickTeam, score, onScor
           ))}
         </select>
       ) : (
-        <span className="team-name">{team.displayName}</span>
+        <span className="team-name">
+          <TeamLink team={team} />
+        </span>
       )}
       <input
         className="score"

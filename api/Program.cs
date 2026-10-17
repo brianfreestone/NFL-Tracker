@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDb>(o =>
     o.UseSqlite(builder.Configuration.GetConnectionString("Default") ?? "Data Source=nfl.db"));
 builder.Services.AddHttpClient<EspnImporter>(c => c.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHostedService<OddsRefresher>();
 builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
@@ -14,13 +15,13 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
 var app = builder.Build();
 app.UseCors();
 
-const int Season = 2026;
+const int Season = AppConfig.Season;
 
-// Create the database and pull the full season the first time the app runs.
+// Create/upgrade the database and pull the full season the first time the app runs.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-    db.Database.EnsureCreated();
+    SchemaUpgrade.Apply(db);
     if (!db.Games.Any())
     {
         try { await scope.ServiceProvider.GetRequiredService<EspnImporter>().ImportAsync(Season); }
@@ -29,6 +30,31 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.MapGet("/api/teams", (AppDb db) => db.Teams.OrderBy(t => t.DisplayName).ToListAsync());
+
+app.MapGet("/api/teams/{id:int}/schedule", async (AppDb db, int id, int season = Season) =>
+{
+    var team = await db.Teams.FindAsync(id);
+    if (team is null) return Results.NotFound();
+
+    var games = await db.Games
+        .Where(g => g.Season == season && (g.HomeTeamId == id || g.AwayTeamId == id))
+        .OrderBy(g => g.SeasonType).ThenBy(g => g.Week).ThenBy(g => g.KickoffUtc)
+        .ToListAsync();
+
+    int wins = 0, losses = 0, ties = 0, pf = 0, pa = 0;
+    foreach (var g in games.Where(g => g.SeasonType == 2 && g.Status == GameStatus.Final))
+    {
+        var mine = g.HomeTeamId == id ? g.HomeScore : g.AwayScore;
+        var theirs = g.HomeTeamId == id ? g.AwayScore : g.HomeScore;
+        pf += mine; pa += theirs;
+        if (mine > theirs) wins++; else if (mine < theirs) losses++; else ties++;
+    }
+
+    var played = games.Where(g => g.SeasonType == 2).Select(g => g.Week).ToHashSet();
+    var byeWeeks = Enumerable.Range(1, 18).Where(w => !played.Contains(w)).ToList();
+
+    return Results.Ok(new { team, record = new { wins, losses, ties, pointsFor = pf, pointsAgainst = pa }, games, byeWeeks });
+});
 
 app.MapGet("/api/weeks", async (AppDb db, int season = Season) =>
     await db.Games.Where(g => g.Season == season)
@@ -47,6 +73,14 @@ app.MapGet("/api/weeks", async (AppDb db, int season = Season) =>
 app.MapGet("/api/games", async (AppDb db, int season = Season, int seasonType = 2, int week = 1) =>
     await db.Games.Where(g => g.Season == season && g.SeasonType == seasonType && g.Week == week)
         .OrderBy(g => g.KickoffUtc).ThenBy(g => g.Id).ToListAsync());
+
+app.MapGet("/api/games/lookup", async (AppDb db, string ids) =>
+{
+    var wanted = ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(s => int.TryParse(s, out var n) ? n : (int?)null)
+        .Where(n => n is not null).Select(n => n!.Value).Take(200).ToList();
+    return await db.Games.Where(g => wanted.Contains(g.Id)).ToListAsync();
+});
 
 app.MapPut("/api/games/{id:int}", async (AppDb db, int id, GameUpdate u) =>
 {
@@ -71,6 +105,7 @@ app.MapPut("/api/games/{id:int}", async (AppDb db, int id, GameUpdate u) =>
     g.Overtime = u.Overtime;
     g.ManuallyEdited = true;
     await db.SaveChangesAsync();
+    await BetLogic.SyncGameAsync(db, g); // settle (or re-open) any bets on this game
     return Results.Ok(g);
 }).RequireAdmin();
 
@@ -107,11 +142,72 @@ app.MapGet("/api/standings", async (AppDb db, int season = Season) =>
         });
 });
 
+// ── Simulated betting (play money) ────────────────────────────────────────────
+
+app.MapGet("/api/bankroll", (AppDb db) => BetLogic.SummaryAsync(db));
+
+app.MapGet("/api/bets", async (AppDb db) =>
+    await db.Bets.OrderByDescending(b => b.PlacedUtc).ThenByDescending(b => b.Id).ToListAsync());
+
+app.MapPost("/api/bets", async (AppDb db, PlaceBet req) =>
+{
+    var game = await db.Games.FindAsync(req.GameId);
+    if (game is null) return Results.NotFound("Game not found.");
+    if (game.Status != GameStatus.Scheduled || game.HomeTeamId is null || game.AwayTeamId is null)
+        return Results.BadRequest("Bets can only be placed on scheduled games with both teams set.");
+    if (!BetLogic.SideMatchesType(req.Type, req.Side))
+        return Results.BadRequest("That pick doesn't match the bet type.");
+
+    // The server uses the game's current line, never numbers sent by the browser.
+    var offer = BetLogic.OfferFor(game, req.Type, req.Side);
+    if (!offer.Available(req.Type))
+        return Results.BadRequest("That line isn't available for this game.");
+    if (req.StakeCents < 100)
+        return Results.BadRequest("Minimum bet is $1.");
+
+    var bankroll = await BetLogic.SummaryAsync(db);
+    if (req.StakeCents > bankroll.BalanceCents)
+        return Results.BadRequest("Not enough bankroll for that bet.");
+
+    var bet = new Bet
+    {
+        GameId = game.Id,
+        PlacedUtc = DateTime.UtcNow,
+        Type = req.Type,
+        Side = req.Side,
+        Line = offer.Line,
+        AmericanOdds = offer.Odds!.Value,
+        StakeCents = req.StakeCents,
+        Status = BetStatus.Pending,
+    };
+    db.Bets.Add(bet);
+    await db.SaveChangesAsync();
+    return Results.Ok(bet);
+}).RequireAdmin();
+
+app.MapDelete("/api/bets/{id:int}", async (AppDb db, int id) =>
+{
+    var bet = await db.Bets.FindAsync(id);
+    if (bet is null) return Results.NotFound();
+    if (bet.Status != BetStatus.Pending) return Results.BadRequest("Settled bets can't be cancelled.");
+    db.Bets.Remove(bet);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+}).RequireAdmin();
+
+app.MapPost("/api/bets/reset", async (AppDb db) =>
+{
+    await db.Bets.ExecuteDeleteAsync();
+    return Results.NoContent();
+}).RequireAdmin();
+
 app.MapPost("/api/import", async (EspnImporter importer, int season = Season) => await importer.ImportAsync(season)).RequireAdmin();
 
 app.Run();
 
 record GameUpdate(int HomeScore, int AwayScore, GameStatus Status, bool Overtime, int? HomeTeamId, int? AwayTeamId);
+
+record PlaceBet(int GameId, BetType Type, BetSide Side, int StakeCents);
 
 class StandingRow(int teamId, string abbreviation, string name, string logoUrl, string conference, string division)
 {
