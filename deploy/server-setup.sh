@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# Runs ON THE SERVER with sudo (deploy.sh calls it). Idempotent: first run does the one-time
-# setup (folders, password, service, nginx site, tunnel route); later runs just swap in the new build.
+# ONE-TIME server setup. Runs ON THE SERVER with sudo (first-time-setup.sh calls it).
+# Safe to re-run. Regular deploys are done by .github/workflows/deploy.yml.
 
 set -euo pipefail
 
 HOST="nfl.brianfreestone.com"
-UPLOAD="$(dirname "$(readlink -f "$0")")/.."
+HERE="$(dirname "$(readlink -f "$0")")"
 APP=/var/www/nfltracker
 CF_CONFIG=/etc/cloudflared/config.yml
 TUNNEL=brianfreestone
 
 echo "--- Folders"
 mkdir -p "$APP/api" "$APP/client" "$APP/data" /etc/nfltracker
+chown -R www-data:www-data "$APP"
 
 echo "--- Edit password"
 if [ ! -s /etc/nfltracker/env ]; then
@@ -29,22 +30,13 @@ else
   echo "(already set, leaving it alone)"
 fi
 
-echo "--- Files"
-systemctl stop nfltracker 2>/dev/null || true
-rm -rf "$APP/api"/* "$APP/client"/*
-cp -r "$UPLOAD/api/." "$APP/api/"
-cp -r "$UPLOAD/client/." "$APP/client/"
-chmod +x "$APP/api/NflTracker.Api"
-chown -R www-data:www-data "$APP"
-
-echo "--- Service"
-cp "$UPLOAD/deploy/nfltracker.service" /etc/systemd/system/nfltracker.service
+echo "--- Service (enabled now, started by the first deploy)"
+cp "$HERE/nfltracker.service" /etc/systemd/system/nfltracker.service
 systemctl daemon-reload
 systemctl enable nfltracker >/dev/null
-systemctl restart nfltracker
 
 echo "--- nginx"
-cp "$UPLOAD/deploy/$HOST.conf" "/etc/nginx/sites-available/nfltracker"
+cp "$HERE/$HOST.conf" /etc/nginx/sites-available/nfltracker
 ln -sf /etc/nginx/sites-available/nfltracker /etc/nginx/sites-enabled/nfltracker
 nginx -t
 systemctl reload nginx
@@ -63,7 +55,4 @@ if ! sudo -u "${SUDO_USER:-root}" cloudflared tunnel route dns "$TUNNEL" "$HOST"
   echo "      Add it in Cloudflare: CNAME  nfl  ->  65094440-4f17-41f9-b114-dedd49b2f020.cfargotunnel.com (proxied)"
 fi
 
-echo "--- Health check"
-sleep 3
-systemctl is-active nfltracker
-journalctl -u nfltracker --no-pager -n 5
+echo "--- Done. Now push to main (or run the Deploy workflow) to put the app on the server."

@@ -1,0 +1,107 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Build API ──────────────────────────────────────────────────────────
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Publish API
+        run: |
+          rm -rf publish
+          dotnet publish api/NflTracker.Api.csproj -c Release -o publish/api -r linux-x64 --self-contained true
+
+      # Guard: the published app must actually start and answer a request.
+      # Uses a throwaway database so nothing leaks into publish/.
+      - name: Smoke test published API
+        env:
+          ASPNETCORE_URLS: http://127.0.0.1:5199
+          ConnectionStrings__Default: Data Source=/tmp/nfl-ci.db
+        run: |
+          chmod +x publish/api/NflTracker.Api
+          ./publish/api/NflTracker.Api > /tmp/api.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:5199/api/weeks > /dev/null; then
+              echo "API answered after ${i}s"
+              kill $pid
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Published API did not answer within 60s"
+          cat /tmp/api.log
+          kill $pid || true
+          exit 1
+
+      # ── Build client ───────────────────────────────────────────────────────
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install & build client
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      # ── SSH via Cloudflare Tunnel ──────────────────────────────────────────
+      - name: Install cloudflared
+        run: |
+          curl -L https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg > /dev/null
+          echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main' | sudo tee /etc/apt/sources.list.d/cloudflared.list
+          sudo apt update && sudo apt install -y cloudflared
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >> ~/.ssh/config << EOF
+          Host ${{ secrets.SSH_HOST }}
+            ProxyCommand cloudflared access ssh --hostname %h
+            StrictHostKeyChecking no
+          EOF
+
+      # ── Deploy ─────────────────────────────────────────────────────────────
+      # The database lives in /var/www/nfltracker/data and is never touched here.
+      - name: Stop service and fix permissions before upload
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo systemctl stop nfltracker || true; sudo chown -R ${{ secrets.SSH_USER }}:${{ secrets.SSH_USER }} /var/www/nfltracker/api /var/www/nfltracker/client && rm -rf /var/www/nfltracker/api/* /var/www/nfltracker/client/*"
+
+      - name: Sync API to server
+        run: |
+          scp -r publish/api/* ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/nfltracker/api/
+
+      - name: Sync client to server
+        run: |
+          scp -r web/dist/* ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/nfltracker/client/
+
+      - name: Restore permissions and restart service
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "sudo chown -R www-data:www-data /var/www/nfltracker/api /var/www/nfltracker/client && sudo chmod +x /var/www/nfltracker/api/NflTracker.Api && sudo systemctl restart nfltracker"
+
+      - name: Verify site is up
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} '
+            for i in $(seq 1 45); do
+              if curl -sf http://127.0.0.1:5105/api/weeks > /dev/null; then echo "API up after ${i}s"; exit 0; fi
+              sleep 1
+            done
+            echo "API did not come up"; sudo journalctl -u nfltracker --no-pager -n 30; exit 1
+          '
