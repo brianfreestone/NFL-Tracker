@@ -1,8 +1,10 @@
 name: Deploy to Production
 
+# NOT USED FOR DEPLOYS ANY MORE (Nov 2026). Pushes to main are built on the PC and deployed
+# straight to the server by the pipeline manager (C:/Users/Brian/Claude/Pipelines, project
+# "nfl-tracker"; dashboard http://localhost:5210). This file no longer runs on push; it is kept
+# so it can be started by hand from the Actions tab if that is ever wanted again.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
